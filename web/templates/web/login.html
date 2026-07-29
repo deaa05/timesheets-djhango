@@ -1,0 +1,30 @@
+{% extends "web/base.html" %}
+{% block title %}Iniciar sesion - Timesheets CORPEI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3 text-center">Sistema de Timesheets</h1>
+                <p class="text-muted text-center mb-4">Ingresa con tu cuenta institucional</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="email">Correo electronico</label>
+                        <input class="form-control" type="email" id="email" name="email" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="password">Contrasena</label>
+                        <input class="form-control" type="password" id="password" name="password" required>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Ingresar</button>
+                </form>
+                <hr>
+                <p class="text-center mb-0">
+                    ¿No tienes cuenta? <a href="{% url 'web:registro' %}">Registrate aqui</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "web/base.html" %}
+{% block title %}Registro - Timesheets CORPEI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-3 text-center">Crear cuenta</h1>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="nombre_completo">Nombre completo</label>
+                        <input class="form-control" type="text" id="nombre_completo" name="nombre_completo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="email">Correo electronico</label>
+                        <input class="form-control" type="email" id="email" name="email" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="password">Contrasena</label>
+                            <input class="form-control" type="password" id="password" name="password" minlength="8" required>
+                            <div class="form-text">Minimo 8 caracteres.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="password2">Repetir contrasena</label>
+                            <input class="form-control" type="password" id="password2" name="password2" minlength="8" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="rol">Rol en la organizacion</label>
+                        <select class="form-select" id="rol" name="rol">
+                            {% for valor, etiqueta in roles %}
+                            <option value="{{ valor }}">{{ etiqueta }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Registrarme</button>
+                </form>
+                <hr>
+                <p class="text-center mb-0">
+                    ¿Ya tienes cuenta? <a href="{% url 'web:login' %}">Inicia sesion</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

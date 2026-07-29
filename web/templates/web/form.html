@@ -1,0 +1,172 @@
+{% extends "web/base.html" %}
+{% block title %}{% if modo == 'crear' %}Nuevo timesheet{% else %}Editar timesheet{% endif %} - Timesheets CORPEI{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h4 mb-4">
+                    {% if modo == 'crear' %}Registrar horas trabajadas{% else %}Editar timesheet ({{ ts.periodo }}){% endif %}
+                </h1>
+
+                <form method="post" id="form-timesheet">
+                    {% csrf_token %}
+
+                    {% if modo == 'crear' %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="proyecto_id">Proyecto *</label>
+                            <select class="form-select" id="proyecto_id" name="proyecto_id" required>
+                                <option value="">Selecciona un proyecto...</option>
+                                {% for p in proyectos %}
+                                <option value="{{ p.id }}"
+                                        data-centro="{{ p.centro_costo_id }}"
+                                        data-centro-nombre="{{ p.centro_costo_codigo }} - {{ p.centro_costo_nombre }}">
+                                    {{ p.codigo }} - {{ p.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label" for="periodo">Periodo *</label>
+                            <input class="form-control" type="month" id="periodo" name="periodo"
+                                   value="{{ periodo_default }}" required>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Centro de costo</label>
+                            <p class="form-control-plaintext" id="centro_texto">Se asigna segun el proyecto</p>
+                            <input type="hidden" id="centro_costo_id" name="centro_costo_id">
+                            <select class="form-select d-none" id="centro_costo_sel" name="centro_costo_id" disabled>
+                                {% for c in centros_costo %}
+                                <option value="{{ c.id }}">{{ c.codigo }} - {{ c.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Proyecto</label>
+                            <p class="form-control-plaintext fw-semibold">{{ nombre_proyecto }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Periodo</label>
+                            <p class="form-control-plaintext fw-semibold">{{ ts.periodo }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Centro de costo</label>
+                            <p class="form-control-plaintext fw-semibold">{{ nombre_centro_costo|default:"-" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <h2 class="h6 mt-2">Actividades realizadas</h2>
+                    <p class="text-muted small">Registra fecha, actividad y horas (maximo 24 por fila).</p>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle" id="tabla-detalles">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 180px;">Fecha</th>
+                                    <th>Actividad</th>
+                                    <th style="width: 110px;">Horas</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="filas-detalles">
+                                {% if modo == 'editar' %}
+                                    {% for d in ts.detalles %}
+                                    <tr>
+                                        <td><input class="form-control" type="date" name="detalle_fecha" value="{{ d.fecha }}" required></td>
+                                        <td><input class="form-control" type="text" name="detalle_actividad" value="{{ d.actividad }}" required></td>
+                                        <td><input class="form-control" type="number" name="detalle_horas" value="{{ d.horas|floatformat:2 }}" step="0.25" min="0.25" max="24" required></td>
+                                        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)">&times;</button></td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td><input class="form-control" type="date" name="detalle_fecha"></td>
+                                        <td><input class="form-control" type="text" name="detalle_actividad" placeholder="Ej. Reunion de avance con el cliente"></td>
+                                        <td><input class="form-control" type="number" name="detalle_horas" step="0.25" min="0.25" max="24" placeholder="8"></td>
+                                        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)">&times;</button></td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mb-4" onclick="agregarFila()">+ Agregar fila</button>
+
+                    <div class="d-flex justify-content-between">
+                        {% if modo == 'crear' %}
+                        <a class="btn btn-outline-secondary" href="{% url 'web:lista' %}">Cancelar</a>
+                        <button class="btn btn-primary" type="submit">Guardar borrador</button>
+                        {% else %}
+                        <a class="btn btn-outline-secondary" href="{% url 'web:detalle' ts.id %}">Cancelar</a>
+                        <button class="btn btn-primary" type="submit">Guardar cambios</button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<template id="fila-template">
+    <tr>
+        <td><input class="form-control" type="date" name="detalle_fecha"></td>
+        <td><input class="form-control" type="text" name="detalle_actividad" placeholder="Descripcion de la actividad"></td>
+        <td><input class="form-control" type="number" name="detalle_horas" step="0.25" min="0.25" max="24" placeholder="8"></td>
+        <td><button type="button" class="btn btn-outline-danger btn-sm" onclick="eliminarFila(this)">&times;</button></td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function agregarFila() {
+    const template = document.getElementById('fila-template');
+    document.getElementById('filas-detalles').appendChild(template.content.cloneNode(true));
+}
+
+function eliminarFila(boton) {
+    const filas = document.querySelectorAll('#filas-detalles tr');
+    if (filas.length > 1) {
+        boton.closest('tr').remove();
+    }
+}
+
+// Centro de costo: se toma del proyecto seleccionado; si el proyecto no tiene,
+// se muestra una lista para elegirlo manualmente.
+const selProyecto = document.getElementById('proyecto_id');
+if (selProyecto) {
+    selProyecto.addEventListener('change', function () {
+        const opcion = this.options[this.selectedIndex];
+        const centroId = opcion.dataset.centro || '';
+        const centroNombre = opcion.dataset.centroNombre || '';
+        const hidden = document.getElementById('centro_costo_id');
+        const texto = document.getElementById('centro_texto');
+        const sel = document.getElementById('centro_costo_sel');
+        if (centroId) {
+            hidden.value = centroId;
+            hidden.disabled = false;
+            texto.textContent = centroNombre;
+            texto.classList.remove('d-none');
+            sel.classList.add('d-none');
+            sel.disabled = true;
+        } else if (this.value) {
+            hidden.value = '';
+            hidden.disabled = true;
+            texto.classList.add('d-none');
+            sel.classList.remove('d-none');
+            sel.disabled = false;
+        } else {
+            hidden.value = '';
+            texto.textContent = 'Se asigna segun el proyecto';
+            texto.classList.remove('d-none');
+            sel.classList.add('d-none');
+            sel.disabled = true;
+        }
+    });
+}
+</script>
+{% endblock %}

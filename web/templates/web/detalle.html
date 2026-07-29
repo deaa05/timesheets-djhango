@@ -1,0 +1,151 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}Timesheet {{ ts.periodo }} - Timesheets CORPEI{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">
+        Timesheet {{ ts.periodo }}
+        <span class="badge bg-{{ ts.estado|estado_badge }} fs-6 align-middle">{{ ts.estado|estado_label }}</span>
+    </h1>
+    <a class="btn btn-outline-secondary" href="{% url 'web:lista' %}">&larr; Volver al listado</a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Proyecto</small>
+                        <strong>{{ ts.nombre_proyecto }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block">Consultor</small>
+                        <strong>{{ ts.nombre_consultor }}</strong>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted d-block">Centro de costo</small>
+                        <strong>{{ ts.nombre_centro_costo|default:"-" }}</strong>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted d-block">Total de horas</small>
+                        <strong>{{ ts.total_horas|floatformat:2 }} h</strong>
+                        <span class="text-muted">(version {{ ts.version }})</span>
+                    </div>
+                    {% if ts.enviado_en %}
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted d-block">Enviado</small>
+                        {{ ts.enviado_en }}
+                    </div>
+                    {% endif %}
+                    {% if ts.revisado_en %}
+                    <div class="col-md-6 mt-2">
+                        <small class="text-muted d-block">Revisado{% if nombre_revisor %} por {{ nombre_revisor }}{% endif %}</small>
+                        {{ ts.revisado_en }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <h2 class="h6">Horas registradas</h2>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 140px;">Fecha</th>
+                                <th>Actividad</th>
+                                <th class="text-end" style="width: 90px;">Horas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in ts.detalles %}
+                            <tr>
+                                <td>{{ d.fecha }}</td>
+                                <td>{{ d.actividad }}</td>
+                                <td class="text-end">{{ d.horas|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3" class="text-center text-muted">Sin horas registradas todavia.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if puede_editar or puede_enviar %}
+                <div class="d-flex gap-2 mt-3">
+                    {% if puede_editar %}
+                    <a class="btn btn-outline-primary" href="{% url 'web:editar' ts.id %}">Editar horas</a>
+                    {% endif %}
+                    {% if puede_enviar %}
+                    <form method="post" action="{% url 'web:enviar' ts.id %}"
+                          onsubmit="return confirm('¿Enviar el timesheet al coordinador para revision?');">
+                        {% csrf_token %}
+                        <button class="btn btn-success" type="submit">Enviar a revision</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if puede_revisar %}
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-body">
+                <h2 class="h5">Revision del coordinador</h2>
+                <form method="post" action="{% url 'web:revisar' ts.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="comentario_rev">Comentario / observaciones</label>
+                        <textarea class="form-control" id="comentario_rev" name="comentario" rows="2"
+                                  placeholder="Opcional para aprobar; recomendado para rechazar o pedir correcciones"></textarea>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-success" type="submit" name="accion" value="aprobar">Aprobar</button>
+                        <button class="btn btn-warning" type="submit" name="accion" value="solicitar-correccion">Solicitar correcciones</button>
+                        <button class="btn btn-danger" type="submit" name="accion" value="rechazar"
+                                onclick="return confirm('¿Seguro que deseas rechazar este timesheet?');">Rechazar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h6">Agregar comentario</h2>
+                <form method="post" action="{% url 'web:comentar' ts.id %}" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input class="form-control" type="text" name="comentario"
+                           placeholder="Escribe una observacion sobre este timesheet..." required>
+                    <button class="btn btn-outline-primary" type="submit">Comentar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h6">Historial y trazabilidad</h2>
+                <ul class="list-group list-group-flush">
+                    {% for evento in ts.historial %}
+                    <li class="list-group-item px-0">
+                        <span class="badge bg-{{ evento.tipo_evento|evento_badge }} text-dark-emphasis">
+                            {{ evento.tipo_evento|evento_label }}
+                        </span>
+                        <div class="small mt-1">
+                            <strong>{{ evento.nombre_usuario }}</strong><br>
+                            <span class="text-muted">{{ evento.creado_en }}</span>
+                            {% if evento.comentario %}
+                            <div class="border rounded p-2 mt-1 bg-light">"{{ evento.comentario }}"</div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item px-0 text-muted">Sin eventos registrados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
